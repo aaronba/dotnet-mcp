@@ -64,6 +64,32 @@ McpServer/
 
 ## Usage
 
+### Quick Start in GitHub Codespaces
+
+If you're using this in a GitHub Codespace, follow these steps:
+
+1. **Open this repository in Codespaces**
+2. **Build the project**:
+   ```bash
+   cd McpServer
+   dotnet build
+   ```
+3. **Configure GitHub Copilot** to use this MCP server by creating/editing `~/.config/Code/User/settings.json`:
+   ```json
+   {
+     "github.copilot.chat.experimental.mcp": {
+       "enabled": true,
+       "servers": {
+         "dotnet-mcp": {
+           "command": "/workspaces/dotnet-mcp/run-server.sh"
+         }
+       }
+     }
+   }
+   ```
+4. **Reload VS Code** (Cmd/Ctrl + Shift + P → "Developer: Reload Window")
+5. **Test** by asking Copilot: "Use the calculator tool to add 5 and 3"
+
 ### Running the Server
 
 The MCP server communicates over STDIO (standard input/output). When you run the server, it will wait for JSON-RPC messages on stdin and respond on stdout.
@@ -75,7 +101,51 @@ dotnet run
 
 ### MCP Client Configuration
 
-To connect this server to an MCP client, you'll typically need to configure the client with the command to start this server. For example:
+To connect this server to an MCP client, you'll typically need to configure the client with the command to start this server.
+
+#### GitHub Copilot in Codespaces
+
+To connect this MCP server to GitHub Copilot in a Codespace:
+
+1. **Open your Codespace** with this repository
+2. **Create MCP configuration**: Create or edit the MCP settings file at `~/.config/Code/User/settings.json` in your Codespace:
+
+```json
+{
+  "github.copilot.chat.experimental.mcp": {
+    "enabled": true,
+    "servers": {
+      "dotnet-mcp": {
+        "command": "/workspaces/dotnet-mcp/run-server.sh"
+      }
+    }
+  }
+}
+```
+
+3. **Alternative configuration** using dotnet directly:
+
+```json
+{
+  "github.copilot.chat.experimental.mcp": {
+    "enabled": true,
+    "servers": {
+      "dotnet-mcp": {
+        "command": "dotnet",
+        "args": ["run", "--project", "/workspaces/dotnet-mcp/McpServer"],
+        "cwd": "/workspaces/dotnet-mcp"
+      }
+    }
+  }
+}
+```
+
+4. **Reload VS Code** to pick up the new configuration
+5. **Test the connection** by asking Copilot to use the calculator, echo, or time tools
+
+#### Other MCP Clients
+
+For other MCP clients, use this general configuration:
 
 ```json
 {
