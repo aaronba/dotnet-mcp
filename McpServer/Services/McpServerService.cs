@@ -12,6 +12,7 @@ public class McpServerService : IMcpServer
     private readonly ILogger<McpServerService> _logger;
     private readonly Dictionary<string, Func<ToolCallParams, CancellationToken, Task<ToolCallResult>>> _toolHandlers;
     private readonly Dictionary<string, McpTool> _tools;
+    private readonly JsonSerializerOptions _jsonOptions;
     private bool _initialized;
 
     public McpServerService(ILogger<McpServerService> logger)
@@ -19,6 +20,11 @@ public class McpServerService : IMcpServer
         _logger = logger;
         _toolHandlers = new Dictionary<string, Func<ToolCallParams, CancellationToken, Task<ToolCallResult>>>();
         _tools = new Dictionary<string, McpTool>();
+        _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
+        };
         _initialized = false;
     }
 
@@ -158,8 +164,8 @@ public class McpServerService : IMcpServer
             throw new ArgumentException("Initialize request missing parameters");
         }
 
-        var json = JsonSerializer.Serialize(request.Params);
-        var initParams = JsonSerializer.Deserialize<InitializeParams>(json) 
+        var json = JsonSerializer.Serialize(request.Params, _jsonOptions);
+        var initParams = JsonSerializer.Deserialize<InitializeParams>(json, _jsonOptions) 
             ?? throw new ArgumentException("Invalid initialize parameters");
 
         return await InitializeAsync(initParams, cancellationToken);
@@ -181,8 +187,8 @@ public class McpServerService : IMcpServer
             throw new ArgumentException("Tool call request missing parameters");
         }
 
-        var json = JsonSerializer.Serialize(request.Params);
-        var toolCall = JsonSerializer.Deserialize<ToolCallParams>(json)
+        var json = JsonSerializer.Serialize(request.Params, _jsonOptions);
+        var toolCall = JsonSerializer.Deserialize<ToolCallParams>(json, _jsonOptions)
             ?? throw new ArgumentException("Invalid tool call parameters");
 
         return await CallToolAsync(toolCall, cancellationToken);

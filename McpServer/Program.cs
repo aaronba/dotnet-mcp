@@ -11,6 +11,7 @@ var builder = Host.CreateApplicationBuilder(args);
 // Configure logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
+builder.Logging.SetMinimumLevel(LogLevel.Information);
 
 // Add services to the container
 builder.Services.AddSingleton<IMcpServer, McpServerService>();

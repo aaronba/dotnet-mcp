@@ -22,7 +22,8 @@ public class StdioTransport : BackgroundService
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
+            WriteIndented = false,
+            PropertyNameCaseInsensitive = true
         };
     }
 
@@ -56,6 +57,8 @@ public class StdioTransport : BackgroundService
                         _logger.LogWarning("Failed to deserialize request: {Line}", line);
                         continue;
                     }
+
+                    _logger.LogInformation("Processing request: {Method} (ID: {RequestId})", request.Method, request.Id);
 
                     var response = await _mcpServer.ProcessRequestAsync(request, stoppingToken);
                     var responseJson = JsonSerializer.Serialize(response, _jsonOptions);

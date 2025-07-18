@@ -1,6 +1,7 @@
 using McpServer.Models;
 using McpServer.Services;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace McpServer.Tools;
 
@@ -72,8 +73,8 @@ public class CalculatorTool : IToolHandler
             }
 
             var operation = operationObj.ToString();
-            var a = Convert.ToDouble(aObj);
-            var b = Convert.ToDouble(bObj);
+            var a = GetDoubleValue(aObj);
+            var b = GetDoubleValue(bObj);
 
             double result = operation?.ToLower() switch
             {
@@ -115,5 +116,19 @@ public class CalculatorTool : IToolHandler
                 }
             };
         }
+    }
+
+    private static double GetDoubleValue(object value)
+    {
+        return value switch
+        {
+            JsonElement element when element.ValueKind == JsonValueKind.Number => element.GetDouble(),
+            double d => d,
+            int i => i,
+            long l => l,
+            float f => f,
+            string s when double.TryParse(s, out var parsed) => parsed,
+            _ => Convert.ToDouble(value)
+        };
     }
 }
