@@ -237,12 +237,12 @@ Converts PDF files to PNG images as base64 strings for use with Azure OpenAI GPT
 **Parameters:**
 - `file_path` (string, optional): Path to the PDF file to convert
 - `pdf_data` (string, optional): Base64 encoded PDF data
-- `page_number` (number, optional): Page number to convert (1-based, defaults to 1)
+- `page_number` (string, optional): Page number to convert (1-based, defaults to "1") or "*" to convert all pages
 - `quality` (number, optional): Image quality/DPI (defaults to 150)
 
 **Note:** Either `file_path` or `pdf_data` must be provided.
 
-**Example with file path:**
+**Convert single page:**
 ```json
 {
   "jsonrpc": "2.0",
@@ -252,14 +252,14 @@ Converts PDF files to PNG images as base64 strings for use with Azure OpenAI GPT
     "name": "pdf_to_png",
     "arguments": {
       "file_path": "/path/to/document.pdf",
-      "page_number": 1,
+      "page_number": "1",
       "quality": 200
     }
   }
 }
 ```
 
-**Example with base64 PDF data:**
+**Convert all pages:**
 ```json
 {
   "jsonrpc": "2.0",
@@ -268,12 +268,96 @@ Converts PDF files to PNG images as base64 strings for use with Azure OpenAI GPT
   "params": {
     "name": "pdf_to_png",
     "arguments": {
-      "pdf_data": "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9Qcm9kdWNlcihQREZsaWI...",
-      "page_number": 1
+      "file_path": "/path/to/document.pdf",
+      "page_number": "*",
+      "quality": 150
     }
   }
 }
 ```
+
+**Example with base64 PDF data (single page):**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "6",
+  "method": "tools/call",
+  "params": {
+    "name": "pdf_to_png",
+    "arguments": {
+      "pdf_data": "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9Qcm9kdWNlcihQREZsaWI...",
+      "page_number": "1"
+    }
+  }
+}
+```
+
+### Using PDF Tool with GitHub Copilot for OCR/Vision Questions
+
+This MCP server's PDF tool is specifically designed to work with Azure OpenAI GPT 4.1 and other multimodal models for OCR and document analysis. Here are practical examples of how to use it with GitHub Copilot in Codespaces:
+
+#### Example 1: Single Page Document Analysis
+Once you have the MCP server configured in Codespaces (see setup instructions above), you can ask Copilot:
+
+```
+"Use the pdf_to_png tool to convert the first page of the PDF file at /workspaces/my-project/invoice.pdf to an image, then analyze what information it contains."
+```
+
+Copilot will:
+1. Call the `pdf_to_png` tool with `page_number: "1"`
+2. Receive the base64-encoded PNG image
+3. Use its vision capabilities to analyze the document content
+4. Provide you with extracted information, table data, text content, etc.
+
+#### Example 2: Multi-Page Document Processing
+For documents with multiple pages:
+
+```
+"Use the pdf_to_png tool with page_number '*' to convert all pages of the PDF at /workspaces/my-project/report.pdf, then summarize the content from each page."
+```
+
+This will:
+1. Convert all PDF pages to individual PNG images
+2. Analyze each page separately using vision/OCR
+3. Provide a comprehensive summary of the entire document
+
+#### Example 3: Data Extraction from Forms
+For extracting structured data from forms or invoices:
+
+```
+"Convert the PDF form at /workspaces/my-project/tax-form.pdf to images using the pdf_to_png tool, then extract all the field values and create a JSON object with the data."
+```
+
+#### Example 4: Code Analysis from Screenshots
+For PDFs containing code screenshots or diagrams:
+
+```
+"Use the pdf_to_png tool to convert the PDF at /workspaces/my-project/architecture-diagram.pdf (all pages), then explain the system architecture and identify any potential issues."
+```
+
+#### Example 5: Table Extraction
+For PDFs with tabular data:
+
+```
+"Convert the financial report PDF at /workspaces/my-project/quarterly-results.pdf to images using the pdf_to_png tool, then extract all table data and convert it to CSV format."
+```
+
+#### Technical Details for Vision/OCR Integration
+
+The PDF tool is optimized for Azure OpenAI GPT 4.1 vision input:
+- **High Quality**: 150 DPI default (adjustable up to 300+ DPI)
+- **PNG Format**: Lossless compression for clear text/diagrams
+- **Base64 Ready**: Direct integration with OpenAI vision API format
+- **Metadata Stripped**: Optimized file size without losing quality
+- **Batch Processing**: "*" parameter for multi-page documents
+
+The base64 images returned by this tool can be directly used in OpenAI API calls or passed to GitHub Copilot's vision capabilities for:
+- Text extraction (OCR)
+- Table recognition and data extraction
+- Form field identification
+- Diagram and chart analysis
+- Handwriting recognition
+- Document classification and summarization
 
 ## Development
 

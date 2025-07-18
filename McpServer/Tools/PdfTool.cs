@@ -23,7 +23,7 @@ public class PdfTool : IToolHandler
         return new McpTool
         {
             Name = "pdf_to_png",
-            Description = "Convert PDF file to PNG image as base64 string for use with Azure OpenAI GPT 4.1 vision/OCR input",
+            Description = "Convert PDF file pages to PNG images as base64 strings for use with Azure OpenAI GPT 4.1 vision/OCR input. Use page_number='*' to convert all pages.",
             InputSchema = new ToolInputSchema
             {
                 Type = "object",
@@ -41,8 +41,8 @@ public class PdfTool : IToolHandler
                     },
                     ["page_number"] = new ToolProperty
                     {
-                        Type = "number",
-                        Description = "Page number to convert (1-based, defaults to 1)"
+                        Type = "string",
+                        Description = "Page number to convert (1-based, defaults to 1) or '*' to convert all pages"
                     },
                     ["quality"] = new ToolProperty
                     {
@@ -61,7 +61,7 @@ public class PdfTool : IToolHandler
         {
             var filePath = GetStringValue(toolCall.Arguments.GetValueOrDefault("file_path"));
             var pdfData = GetStringValue(toolCall.Arguments.GetValueOrDefault("pdf_data"));
-            var pageNumber = GetIntValue(toolCall.Arguments.GetValueOrDefault("page_number", 1));
+            var pageNumberParam = GetStringValue(toolCall.Arguments.GetValueOrDefault("page_number", "1"));
             var quality = GetIntValue(toolCall.Arguments.GetValueOrDefault("quality", 150));
 
             if (string.IsNullOrEmpty(filePath) && string.IsNullOrEmpty(pdfData))
@@ -128,54 +128,130 @@ public class PdfTool : IToolHandler
                 }
             }
 
-            // Convert PDF to PNG using ImageMagick
-            string base64Image;
-            
-            using (var magickImage = new MagickImage())
+            // Check if we should convert all pages or a specific page
+            bool convertAllPages = pageNumberParam == "*";
+            var content = new List<ToolContent>();
+
+            if (convertAllPages)
             {
-                var readSettings = new MagickReadSettings
+                // Convert all pages
+                var base64Images = new List<string>();
+                
+                using (var magickImages = new MagickImageCollection())
                 {
-                    Density = new Density(quality, quality),
-                    Format = MagickFormat.Pdf
-                };
+                    var readSettings = new MagickReadSettings
+                    {
+                        Density = new Density(quality, quality),
+                        Format = MagickFormat.Pdf
+                    };
 
-                // Read the specific page (ImageMagick is 0-based, so subtract 1)
-                readSettings.FrameIndex = (uint)(pageNumber - 1);
-                readSettings.FrameCount = 1;
+                    magickImages.Read(pdfBytes, readSettings);
+                    
+                    for (int i = 0; i < magickImages.Count; i++)
+                    {
+                        var magickImage = magickImages[i];
+                        
+                        // Set output format to PNG
+                        magickImage.Format = MagickFormat.Png;
+                        
+                        // Optimize for web/vision models
+                        magickImage.Strip(); // Remove metadata
+                        magickImage.Quality = 90; // High quality for OCR
 
-                magickImage.Read(pdfBytes, readSettings);
-                
-                // Set output format to PNG
-                magickImage.Format = MagickFormat.Png;
-                
-                // Optimize for web/vision models
-                magickImage.Strip(); // Remove metadata
-                magickImage.Quality = 90; // High quality for OCR
+                        // Convert to base64
+                        var imageBytes = magickImage.ToByteArray();
+                        var base64Image = Convert.ToBase64String(imageBytes);
+                        base64Images.Add(base64Image);
+                        
+                        _logger.LogInformation("Converted PDF page {Page} to PNG ({Width}x{Height}, {Size} bytes)", 
+                            i + 1, magickImage.Width, magickImage.Height, imageBytes.Length);
+                    }
+                }
 
-                // Convert to base64
-                var imageBytes = magickImage.ToByteArray();
-                base64Image = Convert.ToBase64String(imageBytes);
+                content.Add(new ToolContent
+                {
+                    Type = "text",
+                    Text = $"Successfully converted all {base64Images.Count} pages of PDF to PNG images (base64 encoded, ready for Azure OpenAI GPT 4.1 vision input)"
+                });
+
+                // Add each page as a separate content item for easier processing
+                for (int i = 0; i < base64Images.Count; i++)
+                {
+                    content.Add(new ToolContent
+                    {
+                        Type = "text",
+                        Text = $"Page {i + 1}: {base64Images[i]}"
+                    });
+                }
+            }
+            else
+            {
+                // Convert specific page
+                int pageNumber;
+                if (!int.TryParse(pageNumberParam, out pageNumber) || pageNumber < 1)
+                {
+                    return new ToolCallResult
+                    {
+                        IsError = true,
+                        Content = new List<ToolContent>
+                        {
+                            new ToolContent
+                            {
+                                Type = "text",
+                                Text = "page_number must be a positive integer or '*' for all pages"
+                            }
+                        }
+                    };
+                }
+
+                string base64Image;
                 
-                _logger.LogInformation("Converted PDF page {Page} to PNG ({Width}x{Height}, {Size} bytes)", 
-                    pageNumber, magickImage.Width, magickImage.Height, imageBytes.Length);
+                using (var magickImage = new MagickImage())
+                {
+                    var readSettings = new MagickReadSettings
+                    {
+                        Density = new Density(quality, quality),
+                        Format = MagickFormat.Pdf
+                    };
+
+                    // Read the specific page (ImageMagick is 0-based, so subtract 1)
+                    readSettings.FrameIndex = (uint)(pageNumber - 1);
+                    readSettings.FrameCount = 1;
+
+                    magickImage.Read(pdfBytes, readSettings);
+                    
+                    // Set output format to PNG
+                    magickImage.Format = MagickFormat.Png;
+                    
+                    // Optimize for web/vision models
+                    magickImage.Strip(); // Remove metadata
+                    magickImage.Quality = 90; // High quality for OCR
+
+                    // Convert to base64
+                    var imageBytes = magickImage.ToByteArray();
+                    base64Image = Convert.ToBase64String(imageBytes);
+                    
+                    _logger.LogInformation("Converted PDF page {Page} to PNG ({Width}x{Height}, {Size} bytes)", 
+                        pageNumber, magickImage.Width, magickImage.Height, imageBytes.Length);
+                }
+
+                content.Add(new ToolContent
+                {
+                    Type = "text",
+                    Text = $"Successfully converted PDF page {pageNumber} to PNG image (base64 encoded, ready for Azure OpenAI GPT 4.1 vision input)"
+                });
+                
+                content.Add(new ToolContent
+                {
+                    Type = "text",
+                    Text = base64Image
+                });
             }
 
             return await Task.FromResult(new ToolCallResult
             {
                 IsError = false,
-                Content = new List<ToolContent>
-                {
-                    new ToolContent
-                    {
-                        Type = "text",
-                        Text = $"Successfully converted PDF page {pageNumber} to PNG image (base64 encoded, ready for Azure OpenAI GPT 4.1 vision input)"
-                    },
-                    new ToolContent
-                    {
-                        Type = "text",
-                        Text = base64Image
-                    }
-                }
+                Content = content
             });
         }
         catch (Exception ex)
