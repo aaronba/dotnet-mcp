@@ -1,0 +1,12 @@
+{
+  "inputs": [],
+  "servers": {
+    "dotnet-mcp-server": {
+      "command": "dotnet",
+      "type": "stdio",
+      "args": ["run", "--project", "McpServer"],
+      "env": {},
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
