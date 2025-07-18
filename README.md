@@ -15,6 +15,7 @@ This project implements a minimal MCP server that can be connected to GitHub Cop
   - **Calculator**: Perform basic mathematical operations (add, subtract, multiply, divide)
   - **Echo**: Echo back text messages for testing
   - **Time**: Get current date and time in various formats
+  - **PDF to PNG**: Convert PDF files to PNG images as base64 for Azure OpenAI GPT 4.1 vision/OCR input
 - **Async/Await**: Proper asynchronous programming patterns
 - **Error Handling**: Comprehensive error handling with proper MCP error responses
 - **Logging**: Structured logging using Microsoft.Extensions.Logging
@@ -33,7 +34,8 @@ McpServer/
 ├── Tools/                 # Example tool implementations
 │   ├── CalculatorTool.cs  # Mathematical calculations
 │   ├── EchoTool.cs        # Text echo functionality
-│   └── TimeTool.cs        # Date/time operations
+│   ├── TimeTool.cs        # Date/time operations
+│   └── PdfTool.cs         # PDF to PNG conversion
 ├── Transport/             # Communication transport layer
 │   └── StdioTransport.cs  # STDIO transport implementation
 └── Program.cs             # Application entry point and DI setup
@@ -229,6 +231,50 @@ Gets current date and time information.
 }
 ```
 
+#### PDF to PNG Tool
+Converts PDF files to PNG images as base64 strings for use with Azure OpenAI GPT 4.1 vision/OCR input.
+
+**Parameters:**
+- `file_path` (string, optional): Path to the PDF file to convert
+- `pdf_data` (string, optional): Base64 encoded PDF data
+- `page_number` (number, optional): Page number to convert (1-based, defaults to 1)
+- `quality` (number, optional): Image quality/DPI (defaults to 150)
+
+**Note:** Either `file_path` or `pdf_data` must be provided.
+
+**Example with file path:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "4",
+  "method": "tools/call",
+  "params": {
+    "name": "pdf_to_png",
+    "arguments": {
+      "file_path": "/path/to/document.pdf",
+      "page_number": 1,
+      "quality": 200
+    }
+  }
+}
+```
+
+**Example with base64 PDF data:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "5",
+  "method": "tools/call",
+  "params": {
+    "name": "pdf_to_png",
+    "arguments": {
+      "pdf_data": "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9Qcm9kdWNlcihQREZsaWI...",
+      "page_number": 1
+    }
+  }
+}
+```
+
 ## Development
 
 ### Adding New Tools
@@ -286,6 +332,9 @@ dotnet run --property:Configuration=Debug
 - **Microsoft.Extensions.Logging** (9.0.7): For structured logging
 - **Microsoft.Extensions.Configuration** (9.0.7): For configuration management
 - **System.Text.Json** (9.0.7): For JSON serialization
+- **SkiaSharp** (3.119.0): For graphics and image processing
+- **SkiaSharp.NativeAssets.Linux** (3.119.0): Linux native dependencies for SkiaSharp
+- **Magick.NET-Q16-AnyCPU** (14.7.0): For PDF to image conversion using ImageMagick
 
 ## Architecture
 
