@@ -14,7 +14,25 @@ builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 
 // Add services to the container
-builder.Services.AddSingleton<IMcpServer, McpServerService>();
+builder.Services.AddSingleton<IMcpServer>(serviceProvider =>
+{
+    var logger = serviceProvider.GetRequiredService<ILogger<McpServerService>>();
+    var mcpServer = new McpServerService(logger);
+    
+    // Register tools during service creation
+    var calculatorTool = serviceProvider.GetRequiredService<CalculatorTool>();
+    var echoTool = serviceProvider.GetRequiredService<EchoTool>();
+    var timeTool = serviceProvider.GetRequiredService<TimeTool>();
+    var pdfTool = serviceProvider.GetRequiredService<PdfTool>();
+    
+    mcpServer.RegisterTool("calculator", calculatorTool.HandleAsync, CalculatorTool.GetToolDefinition());
+    mcpServer.RegisterTool("echo", echoTool.HandleAsync, EchoTool.GetToolDefinition());
+    mcpServer.RegisterTool("time", timeTool.HandleAsync, TimeTool.GetToolDefinition());
+    mcpServer.RegisterTool("pdf_to_png", pdfTool.HandleAsync, PdfTool.GetToolDefinition());
+    
+    return mcpServer;
+});
+
 builder.Services.AddSingleton<CalculatorTool>();
 builder.Services.AddSingleton<EchoTool>();
 builder.Services.AddSingleton<TimeTool>();
@@ -25,19 +43,6 @@ builder.Services.AddHostedService<StdioTransport>();
 
 // Build the host
 var host = builder.Build();
-
-// Get the MCP server and register tools
-var mcpServer = host.Services.GetRequiredService<IMcpServer>();
-var calculatorTool = host.Services.GetRequiredService<CalculatorTool>();
-var echoTool = host.Services.GetRequiredService<EchoTool>();
-var timeTool = host.Services.GetRequiredService<TimeTool>();
-var pdfTool = host.Services.GetRequiredService<PdfTool>();
-
-// Register the tools with the MCP server
-mcpServer.RegisterTool("calculator", calculatorTool.HandleAsync, CalculatorTool.GetToolDefinition());
-mcpServer.RegisterTool("echo", echoTool.HandleAsync, EchoTool.GetToolDefinition());
-mcpServer.RegisterTool("time", timeTool.HandleAsync, TimeTool.GetToolDefinition());
-mcpServer.RegisterTool("pdf_to_png", pdfTool.HandleAsync, PdfTool.GetToolDefinition());
 
 // Get logger
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
